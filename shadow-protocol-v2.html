@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Shadow Protocol</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Bebas+Neue&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Oswald',sans-serif;background:#000;color:#e2e8f0;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;height:100vh;width:100vw}
+#app{width:100%;height:100%;position:relative}
+
+/* ANIMATIONS */
+@keyframes barrelDrop{0%{transform:translateY(-100vh) scale(.3);opacity:0}40%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(0) scale(1);opacity:1}}
+@keyframes barrelSweep{0%{transform:translateX(-50%) rotate(0deg)}100%{transform:translateX(-50%) rotate(360deg)}}
+@keyframes bloodDrop{0%{transform:scaleY(0);transform-origin:top}100%{transform:scaleY(1);transform-origin:top}}
+@keyframes flicker{0%,100%{opacity:1}50%{opacity:.85}}
+@keyframes scanLine{0%{top:0}100%{top:100%}}
+@keyframes pulseRed{0%,100%{box-shadow:0 0 8px rgba(139,0,0,.4)}50%{box-shadow:0 0 24px rgba(139,0,0,.8)}}
+@keyframes alertPulse{0%,100%{background:rgba(139,0,0,.85)}50%{background:rgba(220,38,38,.95)}}
+@keyframes slideUp{0%{transform:translateY(40px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes typeIn{0%{width:0}100%{width:100%}}
+@keyframes capturedShake{0%,100%{transform:translate(0,0)}10%{transform:translate(-8px,4px)}20%{transform:translate(8px,-4px)}30%{transform:translate(-6px,6px)}40%{transform:translate(6px,-6px)}50%{transform:translate(-4px,4px)}}
+@keyframes unlockGlow{0%{transform:translate(-50%,-50%) scale(0)}60%{transform:translate(-50%,-50%) scale(1.1)}100%{transform:translate(-50%,-50%) scale(1)}}
+
+button{transition:all .15s ease;cursor:pointer;font-family:'Oswald',sans-serif;-webkit-tap-highlight-color:transparent;border:none;letter-spacing:1px}
+button:hover{transform:translateY(-1px);filter:brightness(1.15)}
+button:active{transform:translateY(0) scale(.98)}
+
+.screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column}
+.hidden{display:none!important}
+
+/* TITLE / INTRO */
+.intro-screen{align-items:center;justify-content:center;background:#000;position:relative;overflow:hidden}
+.barrel-shot{position:absolute;top:50%;left:50%;width:280px;height:280px;border-radius:50%;border:6px solid #fff;background:radial-gradient(circle,#000 30%,#1a1a1a 70%);transform:translate(-50%,-50%);animation:barrelDrop 1.2s ease-out;box-shadow:0 0 0 1500px #000,inset 0 0 30px rgba(212,175,55,.2)}
+.barrel-dot{position:absolute;top:50%;left:50%;width:14px;height:14px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 12px rgba(255,255,255,.6)}
+.blood-drop{position:absolute;top:50%;left:50%;width:8px;height:60vh;background:linear-gradient(180deg,#8B0000,#5a0000);transform:translateX(-50%);transform-origin:top;animation:bloodDrop 1.5s ease-out 1.2s forwards;animation-fill-mode:both;opacity:0}
+.blood-drop.show{opacity:1}
+.title-content{text-align:center;z-index:5;opacity:0;transition:opacity 1s ease}
+.title-content.show{opacity:1}
+.title-main{font-family:'Bebas Neue',sans-serif;font-size:clamp(3rem,11vw,6rem);color:#D4AF37;letter-spacing:6px;text-shadow:0 0 30px rgba(212,175,55,.4),3px 3px 0 #000;line-height:.95}
+.title-sub{font-family:'Special Elite',monospace;font-size:clamp(.7rem,2vw,1rem);color:#888;letter-spacing:8px;margin-top:8px;text-transform:uppercase}
+.title-classified{font-family:'Special Elite',monospace;color:#8B0000;font-size:.7rem;letter-spacing:4px;border:1px solid #8B0000;padding:4px 12px;display:inline-block;margin-top:18px;animation:flicker 2s ease infinite}
+.title-buttons{display:flex;gap:12px;justify-content:center;margin-top:36px;flex-wrap:wrap}
+.btn-primary{background:linear-gradient(135deg,#8B0000,#5a0000);border:1px solid #D4AF37;color:#D4AF37;font-family:'Bebas Neue',sans-serif;font-size:1.2rem;padding:14px 36px;letter-spacing:4px;clip-path:polygon(8% 0,100% 0,92% 100%,0 100%);animation:pulseRed 2.5s ease infinite}
+.btn-secondary{background:rgba(255,255,255,.04);border:1px solid rgba(212,175,55,.25);color:#ccc;font-size:.95rem;padding:14px 24px;letter-spacing:2px;clip-path:polygon(8% 0,100% 0,92% 100%,0 100%)}
+.dossier-line{font-family:'Special Elite',monospace;font-size:.75rem;color:#888;letter-spacing:2px;margin-top:14px}
+.dossier-line span{color:#D4AF37}
+
+/* SCAN LINE EFFECT */
+.scan-overlay{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:2;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,.015) 2px,rgba(0,212,255,.015) 4px)}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.4),transparent);animation:scanLine 6s linear infinite;pointer-events:none}
+
+/* HQ / BRIEFING */
+.hq-screen{background:linear-gradient(180deg,#0a0a14,#14141e 50%,#0a0a14);overflow-y:auto;padding:18px;align-items:center}
+.hq-header{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:480px;margin-bottom:16px;border-bottom:1px solid rgba(212,175,55,.2);padding-bottom:10px}
+.hq-title{font-family:'Bebas Neue',sans-serif;color:#D4AF37;font-size:1.4rem;letter-spacing:4px}
+.hq-codename{font-family:'Special Elite',monospace;font-size:.7rem;color:#888;letter-spacing:2px}
+.hq-codename span{color:#00d4ff}
+.hq-section{width:100%;max-width:480px;margin-bottom:16px}
+.hq-section-title{font-family:'Special Elite',monospace;font-size:.7rem;color:#8B0000;letter-spacing:4px;margin-bottom:8px;text-transform:uppercase;border-left:3px solid #8B0000;padding-left:8px}
+.dossier{background:rgba(255,255,255,.03);border:1px solid rgba(212,175,55,.15);padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-family:'Special Elite',monospace;font-size:.8rem}
+.dossier-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted rgba(255,255,255,.05)}
+.dossier-row span:first-child{color:#888;letter-spacing:1px;text-transform:uppercase;font-size:.65rem}
+.dossier-row span:last-child{color:#D4AF37}
+.mission-card{background:rgba(255,255,255,.03);border:1px solid rgba(212,175,55,.2);padding:14px;cursor:pointer;transition:all .2s;margin-bottom:10px;position:relative;overflow:hidden}
+.mission-card:not(.locked):hover{border-color:#D4AF37;background:rgba(212,175,55,.06)}
+.mission-card.locked{opacity:.4;cursor:default;filter:grayscale(.7)}
+.mission-card.completed::after{content:'✓ COMPLETED';position:absolute;top:8px;right:10px;font-family:'Special Elite',monospace;font-size:.6rem;color:#4ade80;letter-spacing:2px}
+.mission-name{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;color:#D4AF37;letter-spacing:3px}
+.mission-loc{font-family:'Special Elite',monospace;font-size:.7rem;color:#888;letter-spacing:2px;margin-top:2px}
+.mission-desc{font-size:.75rem;color:#94a3b8;margin-top:6px;line-height:1.4}
+.mission-stats{display:flex;gap:12px;margin-top:8px;font-size:.65rem;color:#666;letter-spacing:1px;font-family:'Special Elite',monospace}
+.mission-stats span{color:#888}
+.loadout-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.loadout-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);padding:10px;cursor:pointer;transition:all .2s;position:relative;text-align:center}
+.loadout-item.equipped{border-color:#00d4ff;background:rgba(0,212,255,.08);box-shadow:inset 0 0 12px rgba(0,212,255,.1)}
+.loadout-item.locked{opacity:.35;cursor:default;filter:grayscale(.8)}
+.loadout-item:not(.locked):hover{border-color:#D4AF37}
+.loadout-emoji{font-size:1.6rem;margin-bottom:2px}
+.loadout-name{font-family:'Special Elite',monospace;font-size:.7rem;color:#D4AF37;letter-spacing:1px}
+.loadout-desc{font-size:.6rem;color:#666;margin-top:2px;line-height:1.3}
+.loadout-locked{font-family:'Special Elite',monospace;font-size:.6rem;color:#8B0000;margin-top:4px}
+.loadout-equipped-tag{position:absolute;top:4px;right:4px;width:6px;height:6px;background:#00d4ff;border-radius:50%;box-shadow:0 0 6px #00d4ff}
+.briefing-btn{width:100%;background:linear-gradient(135deg,#8B0000,#5a0000);border:1px solid #D4AF37;color:#D4AF37;font-family:'Bebas Neue',sans-serif;font-size:1.3rem;padding:14px;letter-spacing:5px;margin-top:12px;clip-path:polygon(4% 0,100% 0,96% 100%,0 100%)}
+.briefing-btn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(1)}
+
+/* MISSION SCREEN */
+.mission-screen{background:#000}
+.mission-hud{padding:8px 12px;background:linear-gradient(180deg,rgba(0,0,0,.95),rgba(0,0,0,.6));z-index:10;display:flex;justify-content:space-between;align-items:center;font-family:'Special Elite',monospace;font-size:.7rem;letter-spacing:2px;border-bottom:1px solid rgba(212,175,55,.2)}
+.hud-left{display:flex;gap:14px;align-items:center}
+.hud-room{color:#D4AF37}
+.hud-timer{color:#00d4ff}
+.hud-status{color:#4ade80}
+.hud-status.alert{color:#f87171;animation:flicker 1s ease infinite}
+.hud-objective{color:#94a3b8}
+.hud-objective.extract{color:#D4AF37;text-shadow:0 0 8px rgba(212,175,55,.5);animation:flicker 1.8s ease infinite}
+.intel-banner{position:absolute;top:20%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);border:2px solid #D4AF37;color:#D4AF37;font-family:'Bebas Neue',sans-serif;font-size:clamp(1rem,3vw,1.4rem);letter-spacing:4px;padding:10px 22px;box-shadow:0 0 40px rgba(212,175,55,.4);animation:slideUp .4s ease;z-index:20;white-space:nowrap}
+.hud-right{display:flex;gap:8px}
+.gadget-btn{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.4);color:#00d4ff;padding:4px 10px;font-size:.7rem;letter-spacing:1px;font-family:'Special Elite',monospace}
+.gadget-btn:disabled{opacity:.3;cursor:not-allowed}
+.abort-btn{background:rgba(139,0,0,.15);border-color:rgba(220,38,38,.5);color:#f87171}
+.mission-canvas-wrap{flex:1;position:relative;overflow:hidden;background:#0a0a0a}
+canvas{width:100%;height:100%;display:block}
+.mission-controls{padding:10px;background:rgba(0,0,0,.9);display:flex;justify-content:space-between;align-items:center;z-index:10;border-top:1px solid rgba(212,175,55,.2)}
+.dpad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:3px}
+.dpad-btn{background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.25);color:#D4AF37;font-size:1.1rem;font-weight:700;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.dpad-btn:active{background:rgba(212,175,55,.25)}
+.dpad-btn.empty{visibility:hidden}
+.action-btns{display:flex;gap:8px;flex-direction:column}
+.action-btn{background:linear-gradient(135deg,#1a1a2a,#0a0a14);border:1px solid #D4AF37;color:#D4AF37;font-family:'Bebas Neue',sans-serif;font-size:.85rem;padding:10px 14px;letter-spacing:2px;min-width:90px}
+.action-btn.crouch.active{background:linear-gradient(135deg,#8B0000,#5a0000);box-shadow:inset 0 0 8px rgba(212,175,55,.3)}
+.action-btn:disabled{opacity:.3;cursor:not-allowed}
+.kbd-hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-family:'Special Elite',monospace;font-size:.6rem;color:#444;letter-spacing:2px;text-align:center;pointer-events:none;white-space:nowrap}
+
+/* CAPTURED OVERLAY */
+.captured-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(139,0,0,.4);z-index:50;display:flex;align-items:center;justify-content:center;animation:capturedShake .5s ease}
+.captured-text{font-family:'Bebas Neue',sans-serif;color:#fff;font-size:clamp(2rem,8vw,4rem);letter-spacing:8px;text-shadow:0 0 20px #8B0000,3px 3px 0 #000;animation:flicker .3s ease infinite}
+
+/* PUZZLE MODAL */
+.puzzle-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.puzzle-panel{background:linear-gradient(180deg,#0a0a14,#1a1a2a);border:2px solid #D4AF37;padding:24px 28px;max-width:340px;width:90%;text-align:center;box-shadow:0 0 40px rgba(212,175,55,.2),inset 0 0 20px rgba(0,0,0,.5);position:relative}
+.puzzle-panel::before{content:'';position:absolute;top:6px;left:6px;right:6px;bottom:6px;border:1px solid rgba(212,175,55,.2);pointer-events:none}
+.puzzle-title{font-family:'Bebas Neue',sans-serif;color:#D4AF37;font-size:1.5rem;letter-spacing:4px;margin-bottom:4px}
+.puzzle-sub{font-family:'Special Elite',monospace;color:#888;font-size:.7rem;letter-spacing:2px;margin-bottom:18px}
+
+/* KEYPAD */
+.keypad-display{background:#000;border:1px solid rgba(0,212,255,.3);padding:14px;font-family:'Special Elite',monospace;font-size:1.6rem;color:#00d4ff;letter-spacing:8px;margin-bottom:14px;min-height:50px;display:flex;align-items:center;justify-content:center;text-shadow:0 0 8px rgba(0,212,255,.5)}
+.keypad-display.flash{color:#fff;text-shadow:0 0 12px #fff}
+.keypad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px}
+.keypad-btn{aspect-ratio:1;background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.3);color:#D4AF37;font-family:'Bebas Neue',sans-serif;font-size:1.6rem}
+.keypad-btn:active,.keypad-btn.pressed{background:rgba(212,175,55,.4);color:#fff}
+.keypad-btn:disabled{opacity:.4}
+
+/* LOCKPICK */
+.lockpick-track{position:relative;height:32px;background:#000;border:1px solid rgba(212,175,55,.3);margin-bottom:14px;overflow:hidden}
+.lockpick-zone{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,rgba(74,222,128,.2),rgba(74,222,128,.5),rgba(74,222,128,.2));border-left:2px solid #4ade80;border-right:2px solid #4ade80}
+.lockpick-zone.perfect{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,rgba(212,175,55,.3),rgba(212,175,55,.7),rgba(212,175,55,.3));border-left:2px solid #D4AF37;border-right:2px solid #D4AF37}
+.lockpick-cursor{position:absolute;top:0;bottom:0;width:3px;background:#00d4ff;box-shadow:0 0 8px #00d4ff}
+
+/* BUTTONS COMMON */
+.puzzle-btn{background:linear-gradient(135deg,#8B0000,#5a0000);border:1px solid #D4AF37;color:#D4AF37;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;padding:10px 28px;letter-spacing:3px;margin-top:8px;width:100%}
+.puzzle-btn-cancel{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);color:#888;font-family:'Oswald',sans-serif;font-size:.85rem;padding:8px 20px;letter-spacing:2px;margin-top:8px;width:100%}
+.puzzle-feedback{font-family:'Special Elite',monospace;font-size:.85rem;letter-spacing:2px;margin-top:8px;min-height:20px}
+.puzzle-feedback.fail{color:#f87171}
+.puzzle-feedback.ok{color:#4ade80}
+
+/* DEBRIEF */
+.debrief-screen{background:linear-gradient(160deg,#0a0a14,#1a0505 50%,#0a0a14);align-items:center;justify-content:center;padding:20px}
+.debrief-card{background:rgba(0,0,0,.6);border:2px solid rgba(212,175,55,.3);padding:28px 32px;max-width:440px;width:100%;text-align:center;animation:slideUp .5s ease;position:relative}
+.debrief-card::before{content:'';position:absolute;top:6px;left:6px;right:6px;bottom:6px;border:1px solid rgba(212,175,55,.15);pointer-events:none}
+.debrief-classified{font-family:'Special Elite',monospace;color:#8B0000;font-size:.7rem;letter-spacing:6px;margin-bottom:6px}
+.debrief-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(1.8rem,5vw,2.6rem);letter-spacing:5px;margin-bottom:18px}
+.debrief-title.success{color:#D4AF37;text-shadow:0 0 20px rgba(212,175,55,.4)}
+.debrief-title.fail{color:#8B0000;text-shadow:0 0 20px rgba(139,0,0,.5)}
+.debrief-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-family:'Special Elite',monospace}
+.stat-box{background:rgba(255,255,255,.04);border:1px solid rgba(212,175,55,.15);padding:10px;animation:slideUp .4s ease both}
+.stat-val{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:#D4AF37;letter-spacing:2px}
+.stat-label{font-size:.6rem;color:#888;letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+.debrief-buttons{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+
+/* UNLOCK MODAL */
+.unlock-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:300;backdrop-filter:blur(3px)}
+.unlock-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#0a0a14,#1a0505);border:2px solid #D4AF37;padding:26px 34px;z-index:310;text-align:center;animation:unlockGlow .5s cubic-bezier(.34,1.56,.64,1);box-shadow:0 0 60px rgba(212,175,55,.3);min-width:280px;max-width:360px}
+.unlock-modal::before{content:'';position:absolute;top:6px;left:6px;right:6px;bottom:6px;border:1px solid rgba(212,175,55,.2);pointer-events:none}
+.unlock-tag{font-family:'Special Elite',monospace;color:#D4AF37;font-size:.7rem;letter-spacing:4px;margin-bottom:8px}
+.unlock-emoji{font-size:2.6rem;margin-bottom:6px}
+.unlock-name{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:#fff;letter-spacing:3px;margin-bottom:4px}
+.unlock-desc{font-family:'Special Elite',monospace;font-size:.75rem;color:#888;letter-spacing:1px}
+
+/* SAVE STATUS TOAST */
+.save-status{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);font-family:'Special Elite',monospace;font-size:.6rem;letter-spacing:2px;color:#4ade80;background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.1);padding:5px 12px;border-radius:3px;opacity:0;transition:opacity .5s ease;pointer-events:none;z-index:400;white-space:nowrap}
+
+/* RESPONSIVE TOUCH SIZING */
+@media(max-width:380px){.dpad{grid-template-columns:repeat(3,38px);grid-template-rows:repeat(3,38px)}.action-btn{font-size:.75rem;padding:8px 10px;min-width:78px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- INTRO / TITLE -->
+  <div class="screen intro-screen" id="introScreen">
+    <div class="scan-overlay"></div>
+    <div class="scan-line"></div>
+    <div class="barrel-shot" id="barrelShot"></div>
+    <div class="barrel-dot" id="barrelDot"></div>
+    <div class="blood-drop" id="bloodDrop"></div>
+    <div class="title-content" id="titleContent">
+      <h1 class="title-main">SHADOW</h1>
+      <h1 class="title-main">PROTOCOL</h1>
+      <div class="title-sub">— A Covert Operation —</div>
+      <div class="title-classified">⚠ CLASSIFIED ⚠</div>
+      <div class="dossier-line" id="dossierLine"></div>
+      <div class="title-buttons">
+        <button class="btn-primary" onclick="goHQ()">▶ ENTER HQ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HQ / BRIEFING -->
+  <div class="screen hq-screen hidden" id="hqScreen"></div>
+
+  <!-- MISSION -->
+  <div class="screen mission-screen hidden" id="missionScreen">
+    <div class="mission-hud">
+      <div class="hud-left">
+        <span class="hud-room" id="hudRoom">LOBBY</span>
+        <span class="hud-timer" id="hudTimer">00:00</span>
+        <span class="hud-status" id="hudStatus">● CLEAR</span>
+        <span class="hud-objective" id="hudObjective">◆ FIND INTEL</span>
+      </div>
+      <div class="hud-right">
+        <span id="hudGadgets" style="display:flex;gap:8px"></span>
+        <button class="gadget-btn abort-btn" onclick="confirmAbort()">✕ ABORT</button>
+      </div>
+    </div>
+    <div class="mission-canvas-wrap" id="missionCanvasWrap">
+      <canvas id="missionCanvas"></canvas>
+      <div class="kbd-hint">⌨ WASD/Arrows · SHIFT crouch (silent + harder to see) · E interact</div>
+      <div class="intel-banner hidden" id="intelBanner">◆ INTEL SECURED — EXTRACT NOW</div>
+    </div>
+    <div class="mission-controls">
+      <div class="dpad">
+        <div class="dpad-btn empty"></div>
+        <button class="dpad-btn" ontouchstart="setMove('up',1);event.preventDefault()" ontouchend="setMove('up',0);event.preventDefault()" onmousedown="setMove('up',1)" onmouseup="setMove('up',0)" onmouseleave="setMove('up',0)">▲</button>
+        <div class="dpad-btn empty"></div>
+        <button class="dpad-btn" ontouchstart="setMove('left',1);event.preventDefault()" ontouchend="setMove('left',0);event.preventDefault()" onmousedown="setMove('left',1)" onmouseup="setMove('left',0)" onmouseleave="setMove('left',0)">◀</button>
+        <div class="dpad-btn empty"></div>
+        <button class="dpad-btn" ontouchstart="setMove('right',1);event.preventDefault()" ontouchend="setMove('right',0);event.preventDefault()" onmousedown="setMove('right',1)" onmouseup="setMove('right',0)" onmouseleave="setMove('right',0)">▶</button>
+        <div class="dpad-btn empty"></div>
+        <button class="dpad-btn" ontouchstart="setMove('down',1);event.preventDefault()" ontouchend="setMove('down',0);event.preventDefault()" onmousedown="setMove('down',1)" onmouseup="setMove('down',0)" onmouseleave="setMove('down',0)">▼</button>
+        <div class="dpad-btn empty"></div>
+      </div>
+      <div class="action-btns">
+        <button class="action-btn crouch" id="crouchBtn" ontouchstart="toggleCrouch();event.preventDefault()" onclick="toggleCrouch()">CROUCH</button>
+        <button class="action-btn" id="interactBtn" ontouchstart="doInteract();event.preventDefault()" onclick="doInteract()">INTERACT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEBRIEF -->
+  <div class="screen debrief-screen hidden" id="debriefScreen"></div>
+
+  <!-- PUZZLE MODAL -->
+  <div class="puzzle-overlay hidden" id="puzzleOverlay"><div class="puzzle-panel" id="puzzlePanel"></div></div>
+
+  <!-- UNLOCK MODAL -->
+  <div class="unlock-overlay hidden" id="unlockOverlay" onclick="dismissUnlock()"></div>
+  <div class="unlock-modal hidden" id="unlockModal"></div>
+
+  <!-- SAVE STATUS TOAST -->
+  <div class="save-status" id="saveStatus"></div>
+</div>
+
+<script>
+// ========== CONSTANTS ==========
+const RANKS = [
+  {name:"RECRUIT", req:0},
+  {name:"FIELD AGENT", req:3},
+  {name:"OPERATIVE", req:5},
+  {name:"SHADOW", req:8},
+  {name:"LEGEND", req:12},
+];
+
+const GADGETS = [
+  {id:"lockpick", name:"LOCKPICK", emoji:"🔓", desc:"Bypass standard locks", req:0},
+  {id:"smoke", name:"SMOKE BOMB", emoji:"💨", desc:"Distract one guard for 5s", req:2},
+  {id:"emp", name:"EMP DEVICE", emoji:"⚡", desc:"Disable cameras/lasers (8s)", req:4},
+  {id:"grapple", name:"GRAPPLE HOOK", emoji:"🪝", desc:"Skip a room", req:6},
+];
+
+const DISGUISES = [
+  {id:"tactical", name:"TACTICAL", emoji:"🥷", desc:"Standard issue", req:0},
+  {id:"janitor", name:"JANITOR", emoji:"🧹", desc:"Slower detection", req:1},
+  {id:"guard", name:"GUARD UNIFORM", emoji:"👮", desc:"Guards ignore unless suspicious", req:3},
+];
+
+// MISSION DATA — each room is a grid of obstacles, guards, items, doors
+// Grid: 16 cols × 12 rows (canvas-relative), tile-based movement/collision
+// w = wall, . = floor, D = exit door, K = keycard pickup (intel), L = locked door (puzzle), I = intel briefcase (objective)
+// guards: {pathIndices, speed, sightRange}
+// nextRoom = which room index to go to via D
+const MISSIONS = [
+  {
+    id:"embassy", name:"THE EMBASSY", loc:"BERLIN · 02:34 LOCAL", unlockReq:0,
+    desc:"Intel suggests the Ambassador is leaking nuclear codes. Recover the briefcase from his office.",
+    par: 180,
+    rooms:[
+      {
+        name:"LOBBY",
+        grid:[
+          "wwwwwwwwwwwwwwww",
+          "w..............w",
+          "w..............w",
+          "w..wwww..wwww..w",
+          "w..............w",
+          "w..............w",
+          "w..............w",
+          "w..............w",
+          "w..wwww..wwww..w",
+          "w..............w",
+          "w..............w",
+          "wwwwwwwDwwwwwwww",
+        ],
+        spawn:[8,2],
+        guards:[
+          {path:[[3,5],[3,6],[12,6],[12,5]], speed:0.04, sightRange:3.5}
+        ],
+        doors:[{x:7,y:11,type:"keypad",to:1,label:"LOCKED",codeLen:4}],
+        items:[]
+      },
+      {
+        name:"SECURITY",
+        grid:[
+          "wwwwwwwDwwwwwwww",
+          "w..............w",
+          "w..............w",
+          "w..wwwwww......w",
+          "w..............w",
+          "w..............w",
+          "w..............w",
+          "w......wwwwww..w",
+          "w..............w",
+          "w..............w",
+          "w..............w",
+          "wwwwwwwwDwwwwwww",
+        ],
+        spawn:[7,1],
+        guards:[
+          {path:[[2,5],[13,5],[13,9],[2,9]], speed:0.05, sightRange:4}
+        ],
+        doors:[
+          {x:7,y:0,type:"none",to:0,label:"BACK"},
+          {x:8,y:11,type:"lockpick",to:2,label:"LOCKED"}
+        ],
+        items:[]
+      },
+      {
+        name:"HALLWAY",
+        grid:[
+          "wwwwwwwwDwwwwwww",
+          "w..............w",
+          "w..............w",
+          "w..wwww..wwww..w",
+          "w..............w",
+          "w..............w",
+          "w..............w",
+          "w..............w",
+          "w..wwww..wwww..w",
+          "w..............w",
+          "w..............w",
+          "wwwwwwwDwwwwwwww",
+        ],
+        spawn:[8,1],
+        guards:[
+          {path:[[3,5],[12,5],[12,6],[3,6]], speed:0.06, sightRange:3.8}
+        ],
+        doors:[
+          {x:8,y:0,type:"none",to:1,label:"BACK"},
+          {x:7,y:11,type:"lockpick",to:3,label:"LOCKED"}
+        ],
+        items:[]
+      },
+      {
+        name:"OFFICE",
+        grid:[
+          "wwwwwwwDwwwwwwww",
+          "w..............w",
+          "w..............w",
+          "w..wwwwww......w",
+          "w..............w",
+          "w......I.......w",
+          "w..............w",
+          "w..............w",
+          "w....wwww......w",
+          "w....wwww......w",
+          "w..............w",
+          "wwwwwwwwwwwwwwww",
+        ],
+        spawn:[7,1],
+        guards:[
+          {path:[[3,7],[12,7],[12,10],[3,10]], speed:0.045, sightRange:3.5}
+        ],
+        doors:[{x:7,y:0,type:"none",to:2,label:"BACK"}],
+        items:[{type:"intel",x:7,y:5}]
+      }
+    ],
+    exitFromRoom:3
+  },
+  {
+    id:"vault", name:"THE VAULT", loc:"ZÜRICH · 04:12 LOCAL", unlockReq:1,
+    desc:"Swiss bank vault. Recover the encrypted ledger. Heavy security. Watch for the patrol.",
+    par: 240,
+    rooms:[
+      {
+        name:"PARKING",
+        grid:[
+          "wwwwwwwwwwwwwwww",
+          "w..............w",
+          "w..wwww..wwww..w",
+          "w..............w",
+          "w..............w",
+          "w....w....w....w",
+          "w....w....w....w",
+          "w..............w",
+          "w..............w",
+          "w..wwww..wwww..w",
+          "w..............w",
+          "wwwwwwwDwwwwwwww",
+        ],
+        spawn:[8,3],
+        guards:[
+          {path:[[2,3],[13,3],[13,9],[2,9]], speed:0.05, sightRange:4},
+          {path:[[7,5],[7,9]], speed:0.04, sightRange:3.5}
+        ],
+        doors:[{x:7,y:11,type:"keypad",to:1,label:"LOCKED",codeLen:5}],
+        items:[]
+      },
+      {
+        name:"LOBBY",
+        grid:[
+          "wwwwwwwDwwwwwwww",
+          "w..............w",
+          "w..wwwwwwwwww..w",
+          "w..............w",
+          "w..............w",
+          "w..............w",
+          "w..wwww..wwww..w",
+          "w..............w",
+          "w..............w",
+          "w..............w",
+          "w..............w",
+          "wwwwwwwwDwwwwwww",
+        ],
+        spawn:[7,1],
+        guards:[
+          {path:[[2,4],[13,4],[13,8],[2,8]], speed:0.055, sightRange:4},
+          {path:[[8,3],[8,9]], speed:0.04, sightRange:3.5}
+        ],
+        doors:[
+          {x:7,y:0,type:"none",to:0,label:"BACK"},
+          {x:8,y:11,type:"lockpick",to:2,label:"LOCKED"}
+        ],
+        items:[]
+      },
+      {
+        name:"CORRIDOR",
+        grid:[
+          "wwwwwwwwDwwwwwww",
+          "w..............w",
+          "w..wwwwwwwwww..w",
+          "w..............w",
+          "w..............w",
+          "w..wwwwwwwwww..w",
+          "w..............w",
+          "w..............w",
+          "w..wwwwwwwwww..w",
+          "w..............w",
+          "w..............w",
+          "wwwwwwwDwwwwwwww",
+        ],
+        spawn:[8,1],
+        guards:[
+          {path:[[3,4],[12,4]], speed:0.07, sightRange:4.5},
+          {path:[[3,7],[12,7]], speed:0.06, sightRange:4}
+        ],
+        doors:[
+          {x:8,y:0,type:"none",to:1,label:"BACK"},
+          {x:7,y:11,type:"keypad",to:3,label:"LOCKED",codeLen:5}
+        ],
+        items:[]
+      },
+      {
+        name:"VAULT-A",
+        grid:[
+          "wwwwwwwDwwwwwwww",
+          "w..............w",
+          "w..wwwwwwww....w",
+          "w..............w",
+          "w..............w",
+          "w....wwwww.....w",
+          "w..............w",
+          "w....wwwww.....w",
+          "w..............w",
+          "w..............w",
+          "w..............w",
+          "wwwwwwwwDwwwwwww",
+        ],
+        spawn:[7,1],
+        guards:[
+          {path:[[3,3],[12,3],[12,8],[3,8]], speed:0.05, sightRange:4}
+        ],
+        doors:[
+          {x:7,y:0,type:"none",to:2,label:"BACK"},
+          {x:8,y:11,type:"lockpick",to:4,label:"VAULT"}
+        ],
+        items:[]
+      },
+      {
+        name:"VAULT-B",
+        grid:[
+          "wwwwwwwwDwwwwwww",
+          "w..............w",
+          "w..wwwwww......w",
+          "w..............w",
+          "w......I.......w",
+          "w..............w",
+          "w......w.......w",
+          "w......w.......w",
+          "w......w.......w",
+          "w..............w",
+          "w..............w",
+          "wwwwwwwwwwwwwwww",
+        ],
+        spawn:[8,1],
+        guards:[
+          {path:[[3,5],[12,5],[12,9],[3,9]], speed:0.045, sightRange:3.5},
+          {path:[[2,2],[2,10]], speed:0.05, sightRange:3.5}
+        ],
+        doors:[{x:8,y:0,type:"none",to:3,label:"BACK"}],
+        items:[{type:"intel",x:7,y:4}]
+      }
+    ],
+    exitFromRoom:4
+  }
+];
+
+// ========== STATE ==========
+let P = {
+  codename: null,
+  missionsCompleted: 0,
+  totalIntel: 0,
+  bestStealth: 0,
+  gadgetsUnlocked: ["lockpick"],
+  disguisesUnlocked: ["tactical"],
+  equippedGadgets: ["lockpick", null],
+  equippedDisguise: "tactical",
+  missionStats: {} // missionId -> {completed, bestTime, bestStealth}
+};
+
+let M = null; // current mission state
+
+let canvas, ctx, cw, ch, raf;
+let move = {up:0,down:0,left:0,right:0};
+const TILE = 1; // logical tile size; rendering scales
+
+// ========== STORAGE ==========
+// Three-tier fallback so a storage failure can never break the game:
+//   1. window.storage  (persists across sessions in Claude artifacts)
+//   2. localStorage    (persists when the file is opened directly in a browser)
+//   3. in-memory       (session-only; game still fully playable)
+const SAVE_KEY = 'shadowProtocolProgress';
+let storageMode = 'unknown';   // 'cloud' | 'local' | 'memory'
+let memoryStore = {};
+let saveTimer = null;
+
+async function storageSet(key, value) {
+  // Tier 1: window.storage — NOTE: the `shared` param must be passed EXPLICITLY.
+  // Omitting it was the cause of "Storage set failed: Invalid response format".
+  if (typeof window !== 'undefined' && window.storage && window.storage.set) {
+    try {
+      const res = await window.storage.set(key, value, false);
+      if (res) { storageMode = 'cloud'; return true; }
+    } catch (e) { /* fall through */ }
+  }
+  // Tier 2: localStorage
+  try {
+    localStorage.setItem(key, value);
+    storageMode = 'local';
+    return true;
+  } catch (e) { /* fall through */ }
+  // Tier 3: memory
+  memoryStore[key] = value;
+  storageMode = 'memory';
+  return false;
+}
+
+async function storageGet(key) {
+  if (typeof window !== 'undefined' && window.storage && window.storage.get) {
+    try {
+      const res = await window.storage.get(key, false);
+      if (res && typeof res.value === 'string') { storageMode = 'cloud'; return res.value; }
+    } catch (e) { /* key missing or storage unavailable — fall through */ }
+  }
+  try {
+    const v = localStorage.getItem(key);
+    if (v !== null) { storageMode = 'local'; return v; }
+  } catch (e) { /* fall through */ }
+  if (memoryStore[key] !== undefined) { storageMode = 'memory'; return memoryStore[key]; }
+  return null;
+}
+
+async function loadProgress() {
+  try {
+    const raw = await storageGet(SAVE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      P = {...P, ...saved};
+      // Repair any missing/corrupt fields from an older or partial save
+      if (!Array.isArray(P.equippedGadgets) || P.equippedGadgets.length !== 2) P.equippedGadgets = ["lockpick", null];
+      if (!Array.isArray(P.gadgetsUnlocked) || !P.gadgetsUnlocked.length) P.gadgetsUnlocked = ["lockpick"];
+      if (!Array.isArray(P.disguisesUnlocked) || !P.disguisesUnlocked.length) P.disguisesUnlocked = ["tactical"];
+      if (!P.equippedDisguise) P.equippedDisguise = "tactical";
+      if (!P.missionStats || typeof P.missionStats !== 'object') P.missionStats = {};
+      if (typeof P.missionsCompleted !== 'number') P.missionsCompleted = 0;
+      if (typeof P.totalIntel !== 'number') P.totalIntel = 0;
+    }
+  } catch (e) {
+    console.warn('Could not load save — starting fresh.', e);
+  }
+  if (storageMode === 'unknown') storageMode = 'memory';
+}
+
+// Debounced: several unlocks can fire back to back; batch them into one write
+// to avoid tripping the storage rate limit.
+function saveProgress() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const ok = await storageSet(SAVE_KEY, JSON.stringify(P));
+    updateSaveIndicator(ok);
+  }, 250);
+}
+
+function updateSaveIndicator(ok) {
+  const el = document.getElementById('saveStatus');
+  if (!el) return;
+  if (storageMode === 'cloud' || storageMode === 'local') {
+    el.textContent = '💾 PROGRESS SAVED';
+    el.style.color = '#4ade80';
+  } else {
+    el.textContent = '⚠ SESSION ONLY — PROGRESS WON\'T PERSIST';
+    el.style.color = '#fbbf24';
+  }
+  el.style.opacity = '1';
+  clearTimeout(el._fade);
+  el._fade = setTimeout(() => { el.style.opacity = '0'; }, 2200);
+}
+
+// ========== HELPERS ==========
+function pickCodename() {
+  const adj = ["BLACK","SILVER","CRIMSON","GHOST","IRON","SHADOW","RAVEN","NIGHT"];
+  const noun = ["FOX","WOLF","HAWK","VIPER","FALCON","JACKAL","CIPHER","SPECTRE"];
+  return adj[~~(Math.random()*adj.length)] + " " + noun[~~(Math.random()*noun.length)];
+}
+
+function getRank() {
+  let r = RANKS[0];
+  for (const x of RANKS) if (P.missionsCompleted >= x.req) r = x;
+  return r;
+}
+
+function fmtTime(s) {
+  const m = ~~(s/60), ss = ~~(s%60);
+  return String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+// ========== INTRO ==========
+function playIntro() {
+  setTimeout(() => {
+    document.getElementById('bloodDrop').classList.add('show');
+  }, 1200);
+  setTimeout(() => {
+    document.getElementById('titleContent').classList.add('show');
+    const d = document.getElementById('dossierLine');
+    if (P.codename) {
+      d.innerHTML = `AGENT <span>${P.codename}</span> · ${getRank().name} · ${P.missionsCompleted} OPS COMPLETED`;
+    } else {
+      P.codename = pickCodename();
+      d.innerHTML = `AGENT <span>${P.codename}</span> · NEW RECRUIT`;
+      saveProgress();
+    }
+  }, 2500);
+}
+
+// ========== HQ ==========
+function goHQ() {
+  showScreen('hqScreen');
+  renderHQ();
+}
+
+function renderHQ() {
+  const el = document.getElementById('hqScreen');
+  const rank = getRank();
+
+  // Mission cards
+  let missionH = '';
+  MISSIONS.forEach((m, i) => {
+    const req = m.unlockReq || 0;
+    const locked = P.missionsCompleted < req;
+    const stats = P.missionStats[m.id];
+    const completed = stats && stats.completed;
+    let cls = 'mission-card';
+    if (locked) cls += ' locked';
+    if (completed) cls += ' completed';
+    let bestLine = '';
+    if (stats && stats.bestTime) {
+      const runs = stats.runs || 1;
+      bestLine = `<div class="mission-stats"><span>BEST TIME: ${fmtTime(stats.bestTime)}</span><span>· STEALTH: ${stats.bestStealth}/3</span><span>· RUNS: ${runs}</span></div>`;
+    }
+    const need = req - P.missionsCompleted;
+    const lockMsg = `🔒 COMPLETE ${need} MORE OP${need === 1 ? '' : 'S'} TO UNLOCK`;
+    missionH += `<div class="${cls}" onclick="${locked ? '' : `selectMission(${i})`}">
+      <div class="mission-name">${m.name}</div>
+      <div class="mission-loc">📍 ${m.loc}</div>
+      <div class="mission-desc">${locked ? lockMsg : m.desc}</div>
+      ${bestLine}
+    </div>`;
+  });
+
+  // Gadget loadout (2 slots)
+  let gadgetH = '';
+  GADGETS.forEach(g => {
+    const unlocked = P.gadgetsUnlocked.includes(g.id);
+    const equipped = P.equippedGadgets.includes(g.id);
+    let cls = 'loadout-item';
+    if (equipped) cls += ' equipped';
+    if (!unlocked) cls += ' locked';
+    gadgetH += `<div class="${cls}" onclick="${unlocked ? `toggleGadget('${g.id}')` : ''}">
+      ${equipped ? '<div class="loadout-equipped-tag"></div>' : ''}
+      <div class="loadout-emoji">${g.emoji}</div>
+      <div class="loadout-name">${g.name}</div>
+      ${unlocked ? `<div class="loadout-desc">${g.desc}</div>` : `<div class="loadout-locked">🔒 ${g.req} OPS</div>`}
+    </div>`;
+  });
+
+  // Disguise picker
+  let disguiseH = '';
+  DISGUISES.forEach(d => {
+    const unlocked = P.disguisesUnlocked.includes(d.id);
+    const equipped = P.equippedDisguise === d.id;
+    let cls = 'loadout-item';
+    if (equipped) cls += ' equipped';
+    if (!unlocked) cls += ' locked';
+    disguiseH += `<div class="${cls}" onclick="${unlocked ? `selectDisguise('${d.id}')` : ''}">
+      ${equipped ? '<div class="loadout-equipped-tag"></div>' : ''}
+      <div class="loadout-emoji">${d.emoji}</div>
+      <div class="loadout-name">${d.name}</div>
+      ${unlocked ? `<div class="loadout-desc">${d.desc}</div>` : `<div class="loadout-locked">🔒 ${d.req} OPS</div>`}
+    </div>`;
+  });
+
+  el.innerHTML = `
+    <div class="scan-overlay"></div>
+    <div class="hq-header">
+      <div class="hq-title">⚙ HEADQUARTERS</div>
+      <div class="hq-codename">AGENT <span>${P.codename}</span><br>${rank.name}</div>
+    </div>
+    <div class="hq-section">
+      <div class="hq-section-title">▸ DOSSIER</div>
+      <div class="dossier">
+        <div class="dossier-row"><span>Rank</span><span>${rank.name}</span></div>
+        <div class="dossier-row"><span>Ops</span><span>${P.missionsCompleted}</span></div>
+        <div class="dossier-row"><span>Intel</span><span>${P.totalIntel}</span></div>
+        <div class="dossier-row"><span>Gadgets</span><span>${P.gadgetsUnlocked.length}/${GADGETS.length}</span></div>
+        <div class="dossier-row" style="grid-column:1/-1"><span>Save</span><span style="color:${storageMode==='memory'?'#fbbf24':'#4ade80'}">${storageMode==='cloud'?'✓ CLOUD':storageMode==='local'?'✓ LOCAL':'⚠ SESSION ONLY'}</span></div>
+      </div>
+    </div>
+    <div class="hq-section">
+      <div class="hq-section-title">▸ MISSIONS</div>
+      ${missionH}
+    </div>
+    <div class="hq-section">
+      <div class="hq-section-title">▸ LOADOUT · GADGETS (2 slots)</div>
+      <div class="loadout-grid">${gadgetH}</div>
+    </div>
+    <div class="hq-section">
+      <div class="hq-section-title">▸ DISGUISE</div>
+      <div class="loadout-grid" style="grid-template-columns:repeat(3,1fr)">${disguiseH}</div>
+    </div>
+    <div class="hq-section">
+      <button class="puzzle-btn-cancel" style="width:100%" onclick="goIntro()">◀ BACK TO TITLE</button>
+    </div>
+  `;
+}
+
+function goIntro() { showScreen('introScreen'); }
+
+function toggleGadget(id) {
+  const idx = P.equippedGadgets.indexOf(id);
+  if (idx >= 0) {
+    P.equippedGadgets[idx] = null;
+  } else {
+    // find empty slot
+    const empty = P.equippedGadgets.indexOf(null);
+    if (empty >= 0) P.equippedGadgets[empty] = id;
+    else P.equippedGadgets[1] = id; // replace second slot
+  }
+  saveProgress();
+  renderHQ();
+}
+
+function selectDisguise(id) {
+  P.equippedDisguise = id;
+  saveProgress();
+  renderHQ();
+}
+
+function selectMission(i) {
+  startMission(i);
+}
+
+// ========== MISSION ==========
+function startMission(missionIdx) {
+  const mission = MISSIONS[missionIdx];
+  // BUGFIX: item.taken mutates the MISSIONS constant during play. Guards are cloned per-room
+  // in loadRoom, but items are not — so the intel stayed "taken" on every replay. Reset here.
+  mission.rooms.forEach(r => r.items.forEach(it => it.taken = false));
+  M = {
+    missionIdx,
+    mission,
+    roomIdx: 0,
+    px: 0, py: 0, // pixel position
+    tx: 0, ty: 0, // target tile (smooth move)
+    facing: 'down',
+    crouching: false,
+    moving: false,
+    moveCD: 0, // cooldown frames between tile moves
+    guardAlertLevel: 0, // 0 clear, 1 suspicious, 2 alert (caught)
+    spotted: 0,
+    captured: false,
+    capturedT: 0,
+    intelGrabbed: false,
+    timeStart: Date.now(),
+    timeElapsed: 0,
+    smokeActive: 0, // frames remaining
+    empActive: 0,
+    grappleUsed: false,
+    smokeUsed: false,
+    empUsed: false,
+    guards: [], // populated per room
+    interactTarget: null,
+    paused: false,
+    animFrame: 0,
+  };
+  loadRoom(0);
+  showScreen('missionScreen');
+  setTimeout(() => {
+    initCanvas();
+    if (!raf) animLoop();
+  }, 50);
+}
+
+function loadRoom(idx) {
+  M.roomIdx = idx;
+  const room = M.mission.rooms[idx];
+  M.tx = room.spawn[0];
+  M.ty = room.spawn[1];
+  M.px = M.tx;
+  M.py = M.ty;
+  // Clone guards into mutable state
+  M.guards = room.guards.map(g => ({
+    pathIdx: 0,
+    pathProgress: 0,
+    px: g.path[0][0],
+    py: g.path[0][1],
+    facing: 'down',
+    speed: g.speed,
+    sightRange: g.sightRange,
+    path: g.path,
+    distracted: 0,
+    suspicion: 0,
+    hearing: 0,
+  }));
+  M.guardAlertLevel = 0;
+  M.smokeActive = 0;
+  M.empActive = 0;
+  M.captured = false;
+  updateHUD();
+}
+
+function initCanvas() {
+  canvas = document.getElementById('missionCanvas');
+  const w = document.getElementById('missionCanvasWrap');
+  const d = window.devicePixelRatio || 1;
+  cw = w.clientWidth; ch = w.clientHeight;
+  canvas.width = cw*d; canvas.height = ch*d;
+  canvas.style.width = cw+'px'; canvas.style.height = ch+'px';
+  ctx = canvas.getContext('2d');
+  ctx.scale(d, d);
+}
+
+function animLoop() {
+  if (M) {
+    M.animFrame++;
+    if (!M.paused) updateMission();
+    drawMission();
+  }
+  raf = requestAnimationFrame(animLoop);
+}
+
+// ========== MOVEMENT & UPDATE ==========
+function updateMission() {
+  if (M.captured) {
+    M.capturedT++;
+    if (M.capturedT > 90) {
+      // respawn at room start
+      const room = M.mission.rooms[M.roomIdx];
+      M.tx = room.spawn[0]; M.ty = room.spawn[1];
+      M.px = M.tx; M.py = M.ty;
+      M.captured = false;
+      M.capturedT = 0;
+      M.guardAlertLevel = 0;
+      // reset guard suspicions
+      M.guards.forEach(g => g.suspicion = 0);
+      const co = document.querySelector('.captured-overlay');
+      if (co) co.remove();
+    }
+    return;
+  }
+
+  M.timeElapsed = (Date.now() - M.timeStart) / 1000;
+
+  // Decay timed gadgets
+  if (M.smokeActive > 0) M.smokeActive--;
+  if (M.empActive > 0) M.empActive--;
+  if (M.intelJustGrabbed > 0) M.intelJustGrabbed--;
+  M.guards.forEach(g => { if (g.distracted > 0) g.distracted--; });
+
+  // PLAYER MOVE — tile-based with smoothing
+  const room = M.mission.rooms[M.roomIdx];
+  const speed = M.crouching ? 0.08 : 0.16;
+  // Smooth move px/py toward tx/ty
+  const dx = M.tx - M.px, dy = M.ty - M.py;
+  if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+    M.px += Math.sign(dx) * Math.min(speed, Math.abs(dx));
+    M.py += Math.sign(dy) * Math.min(speed, Math.abs(dy));
+    M.moving = true;
+  } else {
+    M.px = M.tx; M.py = M.ty;
+    M.moving = false;
+  }
+
+  // Accept new direction input only if at tile center
+  if (!M.moving) {
+    let ntx = M.tx, nty = M.ty;
+    if (move.up) { nty--; M.facing='up'; }
+    else if (move.down) { nty++; M.facing='down'; }
+    else if (move.left) { ntx--; M.facing='left'; }
+    else if (move.right) { ntx++; M.facing='right'; }
+    if ((ntx !== M.tx || nty !== M.ty) && canEnter(ntx, nty, room)) {
+      M.tx = ntx; M.ty = nty;
+    }
+  }
+
+  // GUARD MOVEMENT (skip if EMP active — they freeze)
+  if (M.empActive === 0) {
+    M.guards.forEach(g => {
+      if (g.distracted > 0) return; // guard frozen by smoke
+      const targetIdx = (g.pathIdx + 1) % g.path.length;
+      const target = g.path[targetIdx];
+      const gx = g.px, gy = g.py;
+      const ddx = target[0] - gx, ddy = target[1] - gy;
+      const dist = Math.hypot(ddx, ddy);
+      if (dist < g.speed) {
+        g.px = target[0]; g.py = target[1];
+        g.pathIdx = targetIdx;
+      } else {
+        g.px += (ddx / dist) * g.speed;
+        g.py += (ddy / dist) * g.speed;
+        if (Math.abs(ddx) > Math.abs(ddy)) g.facing = ddx > 0 ? 'right' : 'left';
+        else g.facing = ddy > 0 ? 'down' : 'up';
+      }
+    });
+  }
+
+  // DETECTION — sight + hearing (smoke blocks sight only, not hearing)
+  // Sight: cone-based, wall-occluded. Crouching halves the suspicion rate and shrinks the guard's effective range —
+  //        she can still detect you crouched, it just takes longer.
+  // Hearing: omnidirectional. Moving while standing makes noise; crouch-walking is silent. Walls dampen sound by half.
+  const makingNoise = M.moving && !M.crouching;
+  let anyDetect = false;
+  M.guards.forEach(g => {
+    if (g.distracted > 0) return;
+    let suspicionGain = 0;
+
+    // SIGHT (blocked by smoke)
+    if (M.smokeActive === 0 && checkSight(g, M.px, M.py, room)) {
+      suspicionGain = M.crouching ? 0.5 : 1;
+    }
+
+    // HEARING (works even in smoke)
+    if (makingNoise) {
+      const hearRange = g.sightRange * 0.6;
+      const dist = Math.hypot(M.px - g.px, M.py - g.py);
+      if (dist <= hearRange) {
+        let hearGain = 0.5;
+        if (wallBetween(g, M.px, M.py, room)) hearGain *= 0.5; // muffled through walls
+        suspicionGain = Math.max(suspicionGain, hearGain);
+        g.hearing = 12; // frames to show the hearing indicator
+      }
+    }
+    if (g.hearing > 0) g.hearing--;
+
+    if (suspicionGain > 0) {
+      // Disguise: guard takes longer to fully alert
+      if (P.equippedDisguise === 'janitor') suspicionGain *= 0.7;
+      if (P.equippedDisguise === 'guard') suspicionGain *= 0.4;
+      g.suspicion = Math.min(60, g.suspicion + suspicionGain);
+      anyDetect = true;
+      if (g.suspicion >= 60) {
+        // CAUGHT
+        M.captured = true;
+        M.spotted++;
+        showCaptured();
+      }
+    } else {
+      g.suspicion = Math.max(0, g.suspicion - 0.4);
+    }
+  });
+  M.guardAlertLevel = anyDetect ? 1 : 0;
+
+  // ITEM PICKUP / DOOR / EXIT
+  const tx = Math.round(M.px), ty = Math.round(M.py);
+  // Intel pickup — grabbing intel changes the objective to EXTRACT.
+  // Player then interacts with any door in the intel room to complete the mission.
+  room.items.forEach(item => {
+    if (!item.taken && item.type === 'intel' && tx === item.x && ty === item.y) {
+      item.taken = true;
+      M.intelGrabbed = true;
+      M.intelJustGrabbed = 120; // frames to flash a banner
+    }
+  });
+
+  // Door interaction prompt
+  M.interactTarget = null;
+  for (const door of room.doors) {
+    if (Math.abs(M.px - door.x) < 0.6 && Math.abs(M.py - door.y) < 0.6) {
+      M.interactTarget = {kind:'door', door};
+      break;
+    }
+  }
+
+  updateHUD();
+}
+
+function canEnter(x, y, room) {
+  if (x < 0 || y < 0 || x >= 16 || y >= 12) return false;
+  const ch = room.grid[y][x];
+  if (ch === 'w') return false;
+  return true;
+}
+
+function wallBetween(guard, px, py, room) {
+  // Raycast from guard to player; true if a wall tile is between them
+  const dx = px - guard.px, dy = py - guard.py;
+  const dist = Math.hypot(dx, dy);
+  const steps = Math.ceil(dist * 4);
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const cx = ~~(guard.px + dx*t + 0.5);
+    const cy = ~~(guard.py + dy*t + 0.5);
+    if (cx>=0&&cy>=0&&cx<16&&cy<12 && room.grid[cy][cx] === 'w') return true;
+  }
+  return false;
+}
+
+function checkSight(guard, px, py, room) {
+  const dx = px - guard.px, dy = py - guard.py;
+  const dist = Math.hypot(dx, dy);
+  let range = guard.sightRange;
+  // Crouching reduces detection range (but does NOT make you invisible — suspicion still builds, just slower)
+  if (M.crouching) range *= 0.55;
+  if (dist > range) return false;
+  // Cone check by facing
+  const ang = Math.atan2(dy, dx);
+  let cone = {right:0, down:Math.PI/2, left:Math.PI, up:-Math.PI/2}[guard.facing];
+  let diff = Math.abs(((ang - cone + Math.PI*3) % (Math.PI*2)) - Math.PI);
+  if (diff > Math.PI/3.2) return false; // ~56° cone
+  // Wall occlusion
+  if (wallBetween(guard, px, py, room)) return false;
+  return true;
+}
+
+function showCaptured() {
+  const wrap = document.getElementById('missionCanvasWrap');
+  if (wrap.querySelector('.captured-overlay')) return;
+  const co = document.createElement('div');
+  co.className = 'captured-overlay';
+  co.innerHTML = '<div class="captured-text">CAUGHT!</div>';
+  wrap.appendChild(co);
+  setTimeout(() => { if (co.parentNode) co.remove(); }, 1500);
+}
+
+// ========== INPUT ==========
+function setMove(dir, val) { move[dir] = val; }
+
+document.addEventListener('keydown', e => {
+  if (M && !M.paused) {
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { move.up = 1; e.preventDefault(); }
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { move.down = 1; e.preventDefault(); }
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { move.left = 1; e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { move.right = 1; e.preventDefault(); }
+    if (e.key === 'Shift') { M.crouching = true; updateCrouchBtn(); e.preventDefault(); }
+    if (e.key === 'e' || e.key === 'E' || e.key === ' ') { doInteract(); e.preventDefault(); }
+  }
+  if (M && e.key === 'Escape' && !M.puzzle) { confirmAbort(); e.preventDefault(); }
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') move.up = 0;
+  if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') move.down = 0;
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') move.left = 0;
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') move.right = 0;
+  if (e.key === 'Shift' && M) { M.crouching = false; updateCrouchBtn(); }
+});
+
+function toggleCrouch() {
+  if (!M) return;
+  M.crouching = !M.crouching;
+  updateCrouchBtn();
+}
+
+function updateCrouchBtn() {
+  const b = document.getElementById('crouchBtn');
+  if (b) b.classList.toggle('active', M && M.crouching);
+}
+
+function doInteract() {
+  if (!M || M.paused || M.captured) return;
+  if (!M.interactTarget) return;
+  const t = M.interactTarget;
+  if (t.kind === 'door') {
+    const door = t.door;
+    // EXTRACTION: in the intel room with intel grabbed, any door interaction ends the mission
+    if (M.intelGrabbed && M.roomIdx === M.mission.exitFromRoom) {
+      finishMission(true);
+      return;
+    }
+    if (door.type === 'none') {
+      transitionToRoom(door.to);
+    } else if (door.type === 'keypad') {
+      openKeypadPuzzle(door);
+    } else if (door.type === 'lockpick') {
+      openLockpickPuzzle(door);
+    }
+  }
+}
+
+// ========== ABORT MISSION ==========
+function confirmAbort() {
+  if (!M) return;
+  if (M.puzzle) return; // don't stack on top of an open puzzle
+  M.paused = true;
+  const overlay = document.getElementById('puzzleOverlay');
+  const panel = document.getElementById('puzzlePanel');
+  panel.innerHTML = `
+    <div class="puzzle-title">⚠ ABORT MISSION?</div>
+    <div class="puzzle-sub">— PROGRESS IN THIS MISSION WILL BE LOST —</div>
+    <button class="puzzle-btn" onclick="abortMission()">✕ ABORT — RETURN TO HQ</button>
+    <button class="puzzle-btn-cancel" onclick="cancelAbort()">◀ KEEP PLAYING</button>
+  `;
+  overlay.classList.remove('hidden');
+}
+
+function cancelAbort() {
+  document.getElementById('puzzleOverlay').classList.add('hidden');
+  if (M) M.paused = false;
+}
+
+function abortMission() {
+  document.getElementById('puzzleOverlay').classList.add('hidden');
+  const co = document.querySelector('.captured-overlay');
+  if (co) co.remove();
+  M = null;
+  goHQ();
+}
+
+function transitionToRoom(nextRoomIdx) {
+  const fromIdx = M.roomIdx;
+  loadRoom(nextRoomIdx);
+  // Smart spawn: find the door in the new room that leads back to the room we just came from,
+  // and drop the player 1 tile interior of it. Prevents landing on top of the door you came through.
+  const newRoom = M.mission.rooms[nextRoomIdx];
+  const backDoor = newRoom.doors.find(d => d.to === fromIdx);
+  if (backDoor) {
+    let sx = backDoor.x, sy = backDoor.y;
+    if (backDoor.y === 0) sy = 1;                 // top wall — spawn below
+    else if (backDoor.y === 11) sy = 10;          // bottom wall — spawn above
+    else if (backDoor.x === 0) sx = 1;            // left wall — spawn right
+    else if (backDoor.x === 15) sx = 14;          // right wall — spawn left
+    M.tx = sx; M.ty = sy;
+    M.px = sx; M.py = sy;
+  }
+}
+
+// ========== PUZZLES ==========
+function genKeypadCode(len) {
+  // Fresh random code each attempt. Digits 1-9, no immediate repeats (easier to memorize/track).
+  const code = [];
+  for (let i = 0; i < len; i++) {
+    let n;
+    do { n = 1 + ~~(Math.random()*9); } while (i > 0 && n === code[i-1]);
+    code.push(n);
+  }
+  return code;
+}
+
+function openKeypadPuzzle(door) {
+  M.paused = true;
+  const code = genKeypadCode(door.codeLen || 4);
+  const overlay = document.getElementById('puzzleOverlay');
+  const panel = document.getElementById('puzzlePanel');
+  panel.innerHTML = `
+    <div class="puzzle-title">⌬ KEYPAD</div>
+    <div class="puzzle-sub">— MEMORIZE THE SEQUENCE —</div>
+    <div class="keypad-display" id="keypadDisplay">${'— '.repeat(code.length).trim()}</div>
+    <div class="keypad-grid">
+      ${[1,2,3,4,5,6,7,8,9].map(n => `<button class="keypad-btn" data-n="${n}" onclick="keypadInput(${n})" disabled>${n}</button>`).join('')}
+    </div>
+    <div class="puzzle-feedback" id="puzzleFB"></div>
+    <button class="puzzle-btn-cancel" onclick="closePuzzle()">◀ ABANDON</button>
+  `;
+  overlay.classList.remove('hidden');
+  // Store puzzle state
+  M.puzzle = {type:'keypad', code, input:[], door, showing:true};
+  // Flash sequence
+  flashKeypadSequence(code);
+}
+
+function flashKeypadSequence(code) {
+  const display = document.getElementById('keypadDisplay');
+  let i = 0;
+  display.textContent = '';
+  const interval = setInterval(() => {
+    if (!M || !M.puzzle) { clearInterval(interval); return; } // puzzle closed mid-flash
+    if (i >= code.length) {
+      clearInterval(interval);
+      display.textContent = '— READY —';
+      display.classList.remove('flash');
+      // enable input
+      document.querySelectorAll('.keypad-btn').forEach(b => b.disabled = false);
+      M.puzzle.showing = false;
+      return;
+    }
+    display.textContent = code[i];
+    display.classList.add('flash');
+    setTimeout(() => display.classList.remove('flash'), 400);
+    i++;
+  }, 700);
+}
+
+function keypadInput(n) {
+  if (!M.puzzle || M.puzzle.showing) return;
+  M.puzzle.input.push(n);
+  const display = document.getElementById('keypadDisplay');
+  display.textContent = M.puzzle.input.join(' ');
+  // Highlight pressed
+  const btn = document.querySelector(`.keypad-btn[data-n="${n}"]`);
+  btn.classList.add('pressed');
+  setTimeout(() => btn.classList.remove('pressed'), 150);
+  // Validate progressively
+  const idx = M.puzzle.input.length - 1;
+  if (M.puzzle.input[idx] !== M.puzzle.code[idx]) {
+    // FAIL — generate a brand new code and re-flash it
+    document.getElementById('puzzleFB').textContent = '✗ INCORRECT — NEW CODE INCOMING';
+    document.getElementById('puzzleFB').className = 'puzzle-feedback fail';
+    document.querySelectorAll('.keypad-btn').forEach(b => b.disabled = true);
+    setTimeout(() => {
+      if (!M.puzzle) return; // puzzle was closed during the delay
+      M.puzzle.code = genKeypadCode(M.puzzle.door.codeLen || 4);
+      M.puzzle.input = [];
+      M.puzzle.showing = true;
+      document.getElementById('puzzleFB').textContent = '';
+      flashKeypadSequence(M.puzzle.code);
+    }, 1200);
+    return;
+  }
+  if (M.puzzle.input.length === M.puzzle.code.length) {
+    // SUCCESS
+    document.getElementById('puzzleFB').textContent = '✓ ACCESS GRANTED';
+    document.getElementById('puzzleFB').className = 'puzzle-feedback ok';
+    document.querySelectorAll('.keypad-btn').forEach(b => b.disabled = true);
+    setTimeout(() => {
+      const door = M.puzzle.door;
+      closePuzzle();
+      transitionToRoom(door.to);
+    }, 900);
+  }
+}
+
+function openLockpickPuzzle(door) {
+  M.paused = true;
+  const overlay = document.getElementById('puzzleOverlay');
+  const panel = document.getElementById('puzzlePanel');
+  panel.innerHTML = `
+    <div class="puzzle-title">🔓 LOCKPICK</div>
+    <div class="puzzle-sub">— STOP IN THE GREEN —</div>
+    <div class="lockpick-track" id="lockTrack">
+      <div class="lockpick-zone" id="lockZone"></div>
+      <div class="lockpick-zone perfect" id="lockPerfect"></div>
+      <div class="lockpick-cursor" id="lockCursor" style="left:0%"></div>
+    </div>
+    <div class="puzzle-feedback" id="puzzleFB" style="height:20px"></div>
+    <button class="puzzle-btn" onclick="lockpickStop()">PICK!</button>
+    <button class="puzzle-btn-cancel" onclick="closePuzzle()">◀ ABANDON</button>
+  `;
+  overlay.classList.remove('hidden');
+  // Random green zone
+  const zoneStart = 25 + Math.random()*40;
+  const zoneWidth = 18;
+  const perfectStart = zoneStart + (zoneWidth/2) - 4;
+  document.getElementById('lockZone').style.left = zoneStart+'%';
+  document.getElementById('lockZone').style.width = zoneWidth+'%';
+  document.getElementById('lockPerfect').style.left = perfectStart+'%';
+  document.getElementById('lockPerfect').style.width = '8%';
+  M.puzzle = {type:'lockpick', door, pos:0, dir:1, speed:1.2, zoneStart, zoneWidth, perfectStart, perfectWidth:8, running:true, animId:null};
+  lockpickAnim();
+}
+
+function lockpickAnim() {
+  if (!M.puzzle || !M.puzzle.running) return;
+  M.puzzle.pos += M.puzzle.dir * M.puzzle.speed;
+  if (M.puzzle.pos >= 98) M.puzzle.dir = -1;
+  if (M.puzzle.pos <= 0) M.puzzle.dir = 1;
+  const cur = document.getElementById('lockCursor');
+  if (cur) cur.style.left = M.puzzle.pos + '%';
+  M.puzzle.animId = requestAnimationFrame(lockpickAnim);
+}
+
+function lockpickStop() {
+  if (!M.puzzle || !M.puzzle.running) return;
+  M.puzzle.running = false;
+  cancelAnimationFrame(M.puzzle.animId);
+  const p = M.puzzle.pos;
+  const inZone = p >= M.puzzle.zoneStart && p <= M.puzzle.zoneStart + M.puzzle.zoneWidth;
+  const inPerfect = p >= M.puzzle.perfectStart && p <= M.puzzle.perfectStart + M.puzzle.perfectWidth;
+  const fb = document.getElementById('puzzleFB');
+  if (inPerfect) {
+    fb.textContent = '✓ PERFECT';
+    fb.className = 'puzzle-feedback ok';
+    setTimeout(() => { const door = M.puzzle.door; closePuzzle(); transitionToRoom(door.to); }, 700);
+  } else if (inZone) {
+    fb.textContent = '✓ PICKED';
+    fb.className = 'puzzle-feedback ok';
+    setTimeout(() => { const door = M.puzzle.door; closePuzzle(); transitionToRoom(door.to); }, 700);
+  } else {
+    fb.textContent = '✗ MISSED — RETRY';
+    fb.className = 'puzzle-feedback fail';
+    setTimeout(() => {
+      M.puzzle.pos = 0; M.puzzle.dir = 1; M.puzzle.running = true;
+      fb.textContent = '';
+      lockpickAnim();
+    }, 900);
+  }
+}
+
+function closePuzzle() {
+  document.getElementById('puzzleOverlay').classList.add('hidden');
+  if (M) {
+    M.paused = false;
+    if (M.puzzle && M.puzzle.animId) cancelAnimationFrame(M.puzzle.animId);
+    M.puzzle = null;
+  }
+}
+
+// ========== GADGETS ==========
+function useGadget(slot) {
+  if (!M || M.paused) return;
+  const id = P.equippedGadgets[slot];
+  if (!id) return;
+  if (id === 'smoke') {
+    if (M.smokeUsed) return;
+    M.smokeActive = 5*60; // 5 sec @ 60fps
+    M.smokeUsed = true;
+  } else if (id === 'emp') {
+    if (M.empUsed) return;
+    M.empActive = 8*60;
+    M.empUsed = true;
+  } else if (id === 'grapple') {
+    if (M.grappleUsed) return;
+    M.grappleUsed = true;
+    // Skip to next room
+    const room = M.mission.rooms[M.roomIdx];
+    const fwd = room.doors.find(d => d.to > M.roomIdx);
+    if (fwd) transitionToRoom(fwd.to);
+  } else if (id === 'lockpick') {
+    // passive — no manual action
+  }
+  updateHUD();
+}
+
+function updateHUD() {
+  if (!M) return;
+  const room = M.mission.rooms[M.roomIdx];
+  document.getElementById('hudRoom').textContent = room.name;
+  document.getElementById('hudTimer').textContent = fmtTime(M.timeElapsed);
+  const status = document.getElementById('hudStatus');
+  if (M.guardAlertLevel > 0) {
+    status.textContent = '● DETECTED';
+    status.className = 'hud-status alert';
+  } else {
+    status.textContent = M.crouching ? '● HIDDEN' : '● CLEAR';
+    status.className = 'hud-status';
+  }
+  // Objective indicator
+  const obj = document.getElementById('hudObjective');
+  if (M.intelGrabbed) {
+    obj.textContent = '◆ EXTRACT';
+    obj.className = 'hud-objective extract';
+  } else {
+    obj.textContent = '◆ FIND INTEL';
+    obj.className = 'hud-objective';
+  }
+  // Intel-secured banner (auto-hide after ~2 sec via M.intelJustGrabbed countdown in update loop)
+  const banner = document.getElementById('intelBanner');
+  if (M.intelJustGrabbed && M.intelJustGrabbed > 0) banner.classList.remove('hidden');
+  else banner.classList.add('hidden');
+  // Gadgets
+  const g = document.getElementById('hudGadgets');
+  let gh = '';
+  P.equippedGadgets.forEach((id, i) => {
+    if (!id) return;
+    const gad = GADGETS.find(x => x.id === id);
+    let used = false;
+    if (id === 'smoke' && M.smokeUsed) used = true;
+    if (id === 'emp' && M.empUsed) used = true;
+    if (id === 'grapple' && M.grappleUsed) used = true;
+    if (id === 'lockpick') return; // passive, don't show as button
+    gh += `<button class="gadget-btn" onclick="useGadget(${i})" ${used?'disabled':''}>${gad.emoji} ${gad.name}</button>`;
+  });
+  g.innerHTML = gh;
+}
+
+// ========== RENDERING ==========
+function tileSize() {
+  return Math.min(cw / 16, ch / 12);
+}
+function offsets() {
+  const ts = tileSize();
+  return {ts, ox: (cw - ts*16) / 2, oy: (ch - ts*12) / 2};
+}
+
+function drawMission() {
+  if (!ctx) return;
+  ctx.clearRect(0,0,cw,ch);
+  // BG
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0,0,cw,ch);
+  const {ts, ox, oy} = offsets();
+
+  const room = M.mission.rooms[M.roomIdx];
+
+  // FLOOR
+  for (let y = 0; y < 12; y++) {
+    for (let x = 0; x < 16; x++) {
+      const c = room.grid[y][x];
+      const px = ox + x*ts, py = oy + y*ts;
+      if (c === 'w') {
+        // Wall — gunmetal w/ slight gradient
+        ctx.fillStyle = '#1a1a24';
+        ctx.fillRect(px, py, ts, ts);
+        ctx.fillStyle = 'rgba(212,175,55,0.05)';
+        ctx.fillRect(px, py, ts, 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(px, py + ts - 2, ts, 2);
+      } else {
+        // Floor — dark with subtle tile pattern
+        ctx.fillStyle = (x+y) % 2 === 0 ? '#0d1217' : '#0a0e13';
+        ctx.fillRect(px, py, ts, ts);
+        ctx.strokeStyle = 'rgba(212,175,55,0.04)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px+0.5, py+0.5, ts-1, ts-1);
+      }
+    }
+  }
+
+  // DOORS — render highlighted. Extraction door pulses gold once intel is secured.
+  const isExtractRoom = M.intelGrabbed && M.roomIdx === M.mission.exitFromRoom;
+  room.doors.forEach(d => {
+    const px = ox + d.x*ts, py = oy + d.y*ts;
+    let fill, icon;
+    if (isExtractRoom) {
+      const pulse = 0.55 + Math.sin(M.animFrame*0.12)*0.3;
+      fill = `rgba(212,175,55,${pulse})`;
+      icon = '↑';
+      // outer glow
+      ctx.fillStyle = `rgba(212,175,55,${pulse*0.3})`;
+      ctx.fillRect(px-ts*.1, py-ts*.1, ts*1.2, ts*1.2);
+    } else if (d.type === 'none') {
+      fill = 'rgba(74,222,128,.5)';
+      icon = '↑';
+    } else {
+      fill = 'rgba(220,38,38,.5)';
+      icon = '🔒';
+    }
+    ctx.fillStyle = fill;
+    ctx.fillRect(px+ts*.1, py+ts*.1, ts*.8, ts*.8);
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${ts*.35}px 'Bebas Neue'`;
+    ctx.textAlign = 'center';
+    ctx.fillText(icon, px+ts/2, py+ts*.65);
+  });
+
+  // ITEMS (intel briefcase)
+  room.items.forEach(item => {
+    if (item.taken) return;
+    const px = ox + item.x*ts, py = oy + item.y*ts;
+    const pulse = 0.5 + Math.sin(M.animFrame*0.08)*0.15;
+    ctx.fillStyle = `rgba(212,175,55,${pulse})`;
+    ctx.fillRect(px+ts*.2, py+ts*.3, ts*.6, ts*.4);
+    ctx.fillStyle = '#D4AF37';
+    ctx.fillRect(px+ts*.2, py+ts*.3, ts*.6, 3);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(px+ts*.45, py+ts*.25, ts*.1, ts*.1);
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${ts*.25}px Oswald`;
+    ctx.textAlign = 'center';
+    ctx.fillText('💼', px+ts/2, py+ts*.6);
+  });
+
+  // SIGHT CONES (drawn before guards so guards on top)
+  M.guards.forEach(g => {
+    if (M.empActive > 0 || g.distracted > 0) return;
+    drawSightCone(g, ts, ox, oy, room);
+  });
+
+  // GUARDS
+  M.guards.forEach(g => drawGuard(g, ts, ox, oy));
+
+  // SMOKE OVERLAY
+  if (M.smokeActive > 0) {
+    const alpha = Math.min(0.7, M.smokeActive / 60);
+    ctx.fillStyle = `rgba(180,180,200,${alpha})`;
+    ctx.fillRect(0, 0, cw, ch);
+    // Swirl
+    for (let i = 0; i < 8; i++) {
+      const sx = cw/2 + Math.cos(M.animFrame*0.02 + i) * cw*0.3;
+      const sy = ch/2 + Math.sin(M.animFrame*0.025 + i) * ch*0.2;
+      ctx.fillStyle = `rgba(220,220,230,${alpha*0.4})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 60, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // EMP OVERLAY
+  if (M.empActive > 0) {
+    ctx.fillStyle = `rgba(0,212,255,0.08)`;
+    ctx.fillRect(0,0,cw,ch);
+    ctx.strokeStyle = `rgba(0,212,255,${0.4 + Math.sin(M.animFrame*0.4)*0.3})`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(4,4,cw-8,ch-8);
+  }
+
+  // PLAYER
+  drawPlayer(ts, ox, oy);
+
+  // INTERACT PROMPT
+  if (M.interactTarget) {
+    const px = ox + M.px*ts + ts/2;
+    const py = oy + M.py*ts - ts*0.4;
+    const isExtract = M.intelGrabbed && M.roomIdx === M.mission.exitFromRoom;
+    ctx.fillStyle = isExtract ? '#fff' : '#D4AF37';
+    ctx.font = `bold ${ts*.3}px 'Bebas Neue'`;
+    ctx.textAlign = 'center';
+    ctx.fillText(isExtract ? '[E] EXTRACT' : '[E] INTERACT', px, py);
+  }
+
+  // Vignette
+  const grad = ctx.createRadialGradient(cw/2, ch/2, ch*0.3, cw/2, ch/2, ch*0.7);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,cw,ch);
+}
+
+function drawSightCone(g, ts, ox, oy, room) {
+  const cx = ox + g.px*ts + ts/2;
+  const cy = oy + g.py*ts + ts/2;
+  const range = g.sightRange * ts;
+  let baseAng = {right:0, down:Math.PI/2, left:Math.PI, up:-Math.PI/2}[g.facing];
+  const half = Math.PI/3.2;
+  const alert = g.suspicion > 30;
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, range);
+  if (alert) {
+    grad.addColorStop(0, 'rgba(220,38,38,0.4)');
+    grad.addColorStop(1, 'rgba(220,38,38,0)');
+  } else {
+    grad.addColorStop(0, 'rgba(255,200,80,0.25)');
+    grad.addColorStop(1, 'rgba(255,200,80,0)');
+  }
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, range, baseAng - half, baseAng + half);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawGuard(g, ts, ox, oy) {
+  const cx = ox + g.px*ts + ts/2;
+  const cy = oy + g.py*ts + ts/2;
+  const s = ts*0.35;
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy+s*0.9, s*0.7, s*0.2, 0, 0, Math.PI*2);
+  ctx.fill();
+  // body
+  ctx.fillStyle = M.empActive > 0 ? '#444' : (g.distracted > 0 ? '#555' : '#2a2a35');
+  ctx.beginPath();
+  ctx.arc(cx, cy, s*0.65, 0, Math.PI*2);
+  ctx.fill();
+  // jacket detail
+  ctx.fillStyle = '#1a1a25';
+  ctx.fillRect(cx - s*0.15, cy - s*0.3, s*0.3, s*0.6);
+  // head
+  const hx = cx + ({right:s*0.2, left:-s*0.2, down:0, up:0}[g.facing]);
+  const hy = cy + ({down:s*0.2, up:-s*0.2, left:0, right:0}[g.facing]);
+  ctx.fillStyle = '#666';
+  ctx.beginPath();
+  ctx.arc(hx, hy, s*0.35, 0, Math.PI*2);
+  ctx.fill();
+  // eye direction indicator
+  ctx.fillStyle = g.suspicion > 30 ? '#dc2626' : '#fff';
+  const ex = hx + ({right:s*0.2, left:-s*0.2, down:0, up:0}[g.facing]);
+  const ey = hy + ({down:s*0.15, up:-s*0.15, left:0, right:0}[g.facing]);
+  ctx.beginPath();
+  ctx.arc(ex, ey, s*0.08, 0, Math.PI*2);
+  ctx.fill();
+  // ! over head if suspicious
+  if (g.suspicion > 20) {
+    ctx.fillStyle = g.suspicion > 30 ? '#dc2626' : '#fbbf24';
+    ctx.font = `bold ${ts*0.5}px 'Bebas Neue'`;
+    ctx.textAlign = 'center';
+    ctx.fillText(g.suspicion > 30 ? '!' : '?', cx, cy - s*1.4);
+  }
+  // Hearing indicator — sound-wave arcs by her head when she hears you
+  if (g.hearing > 0 && g.suspicion <= 30) {
+    ctx.strokeStyle = 'rgba(251,191,36,0.8)';
+    ctx.lineWidth = 1.5;
+    for (let i = 1; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.arc(cx + s*0.8, cy - s*0.8, s*0.25*i, -Math.PI/3, Math.PI/3);
+      ctx.stroke();
+    }
+  }
+  // Z if distracted
+  if (g.distracted > 0) {
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = `bold ${ts*0.4}px 'Bebas Neue'`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Z', cx, cy - s*1.3);
+  }
+}
+
+function drawPlayer(ts, ox, oy) {
+  const cx = ox + M.px*ts + ts/2;
+  const cy = oy + M.py*ts + ts/2;
+  const s = M.crouching ? ts*0.28 : ts*0.35;
+  // NOISE RIPPLES — expanding rings at feet when moving upright (silent when crouched)
+  if (M.moving && !M.crouching) {
+    for (let i = 0; i < 2; i++) {
+      const phase = ((M.animFrame * 0.03) + i * 0.5) % 1;
+      const r = ts * 0.4 + phase * ts * 1.1;
+      ctx.strokeStyle = `rgba(255,255,255,${0.35 * (1 - phase)})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy + s*0.8, r, 0, Math.PI*2);
+      ctx.stroke();
+    }
+  }
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy+s*0.9, s*0.7, s*0.2, 0, 0, Math.PI*2);
+  ctx.fill();
+  // body — dark tactical or disguise color
+  let bodyColor = '#0a0a14';
+  let accentColor = '#8B0000';
+  if (P.equippedDisguise === 'janitor') { bodyColor = '#3a4a2a'; accentColor = '#5a6a3a'; }
+  if (P.equippedDisguise === 'guard') { bodyColor = '#2a2a35'; accentColor = '#1a1a25'; }
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath();
+  ctx.arc(cx, cy, s*0.65, 0, Math.PI*2);
+  ctx.fill();
+  // accent stripe
+  ctx.fillStyle = accentColor;
+  ctx.fillRect(cx - s*0.12, cy - s*0.3, s*0.24, s*0.55);
+  // head
+  const hx = cx + ({right:s*0.18, left:-s*0.18, down:0, up:0}[M.facing]);
+  const hy = cy + ({down:s*0.18, up:-s*0.18, left:0, right:0}[M.facing]);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.arc(hx, hy, s*0.32, 0, Math.PI*2);
+  ctx.fill();
+  // gold eyes (covert)
+  ctx.fillStyle = '#D4AF37';
+  const ex = hx + ({right:s*0.18, left:-s*0.18, down:0, up:0}[M.facing]);
+  const ey = hy + ({down:s*0.13, up:-s*0.13, left:0, right:0}[M.facing]);
+  ctx.beginPath();
+  ctx.arc(ex, ey, s*0.07, 0, Math.PI*2);
+  ctx.fill();
+  // crouch indicator (low profile band)
+  if (M.crouching) {
+    ctx.strokeStyle = 'rgba(0,212,255,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, s*0.85, 0, Math.PI*2);
+    ctx.stroke();
+  }
+}
+
+// ========== MISSION COMPLETION ==========
+function finishMission(success) {
+  if (!success) {
+    showDebrief({success:false});
+    return;
+  }
+  const time = M.timeElapsed;
+  const mission = M.mission;
+  const stealthRating = M.spotted === 0 ? 3 : M.spotted <= 2 ? 2 : 1;
+  let score = 500;
+  if (M.spotted === 0) score += 200;
+  else if (M.spotted <= 2) score += 100;
+  if (time < mission.par) score += 100;
+
+  // Save best stats
+  const prev = P.missionStats[mission.id] || {};
+  const newStats = {
+    completed: true,
+    runs: (prev.runs || 0) + 1,
+    bestTime: prev.bestTime ? Math.min(prev.bestTime, time) : time,
+    bestStealth: Math.max(prev.bestStealth || 0, stealthRating),
+  };
+  P.missionStats[mission.id] = newStats;
+
+  // Update lifetime. Every successful extraction is an "op" — replays count.
+  // (Previously only first-time completions counted, which made the 2-op Vault unlock
+  //  unreachable when the Embassy was the only available mission.)
+  P.missionsCompleted++;
+  P.totalIntel++;
+
+  // Check unlocks
+  const unlocks = [];
+  GADGETS.forEach(g => {
+    if (P.missionsCompleted >= g.req && !P.gadgetsUnlocked.includes(g.id)) {
+      P.gadgetsUnlocked.push(g.id);
+      unlocks.push({type:'GADGET', name:g.name, emoji:g.emoji, desc:g.desc});
+    }
+  });
+  DISGUISES.forEach(d => {
+    if (P.missionsCompleted >= d.req && !P.disguisesUnlocked.includes(d.id)) {
+      P.disguisesUnlocked.push(d.id);
+      unlocks.push({type:'DISGUISE', name:d.name, emoji:d.emoji, desc:d.desc});
+    }
+  });
+  // Rank up?
+  const oldRank = RANKS.slice().reverse().find(r => P.missionsCompleted - 1 >= r.req);
+  const newRank = getRank();
+  if (oldRank && newRank.name !== oldRank.name) {
+    unlocks.push({type:'RANK', name:newRank.name, emoji:'★', desc:'Promotion earned'});
+  }
+
+  saveProgress();
+
+  showDebrief({success:true, score, time, stealthRating, unlocks});
+}
+
+function showDebrief(data) {
+  showScreen('debriefScreen');
+  const el = document.getElementById('debriefScreen');
+  if (data.success) {
+    let unlockH = '';
+    if (data.unlocks.length) {
+      unlockH = '<div style="margin-top:14px;padding:10px;border:1px solid rgba(212,175,55,.2);background:rgba(212,175,55,.05)"><div style="font-family:\'Special Elite\',monospace;color:#D4AF37;font-size:.7rem;letter-spacing:3px;margin-bottom:6px">▸ UNLOCKED</div>' +
+        data.unlocks.map(u => `<div style="font-size:.8rem;color:#fff;margin:4px 0"><span style="font-size:1.2rem">${u.emoji}</span> ${u.name} <span style="color:#888;font-size:.7rem">(${u.type})</span></div>`).join('') +
+        '</div>';
+    }
+    el.innerHTML = `<div class="debrief-card">
+      <div class="debrief-classified">⚠ MISSION DEBRIEF ⚠</div>
+      <div class="debrief-title success">✓ EXTRACTION SUCCESS</div>
+      <div class="debrief-stats">
+        <div class="stat-box" style="animation-delay:0s"><div class="stat-val">${data.score}</div><div class="stat-label">SCORE</div></div>
+        <div class="stat-box" style="animation-delay:.1s"><div class="stat-val">${fmtTime(data.time)}</div><div class="stat-label">TIME</div></div>
+        <div class="stat-box" style="animation-delay:.2s"><div class="stat-val">${'★'.repeat(data.stealthRating)}${'☆'.repeat(3-data.stealthRating)}</div><div class="stat-label">STEALTH</div></div>
+        <div class="stat-box" style="animation-delay:.3s"><div class="stat-val">${getRank().name}</div><div class="stat-label">RANK</div></div>
+      </div>
+      ${unlockH}
+      <div class="debrief-buttons">
+        <button class="puzzle-btn-cancel" style="width:auto;padding:10px 20px" onclick="goHQ()">◀ HQ</button>
+        <button class="puzzle-btn" style="width:auto;padding:10px 24px" onclick="startMission(${M.missionIdx})">↻ REPLAY</button>
+      </div>
+    </div>`;
+  } else {
+    el.innerHTML = `<div class="debrief-card">
+      <div class="debrief-classified">⚠ MISSION FAILED ⚠</div>
+      <div class="debrief-title fail">✗ MISSION ABORTED</div>
+      <div style="font-family:'Special Elite',monospace;color:#888;font-size:.85rem;margin-bottom:14px">Cover blown. Return to HQ for reassignment.</div>
+      <div class="debrief-buttons">
+        <button class="puzzle-btn-cancel" style="width:auto;padding:10px 20px" onclick="goHQ()">◀ HQ</button>
+        <button class="puzzle-btn" style="width:auto;padding:10px 24px" onclick="startMission(${M.missionIdx})">↻ RETRY</button>
+      </div>
+    </div>`;
+  }
+  // Show unlocks one at a time after debrief renders
+  if (data.success && data.unlocks && data.unlocks.length) {
+    setTimeout(() => showUnlockChain(data.unlocks.slice()), 800);
+  }
+}
+
+function showUnlockChain(queue) {
+  if (!queue.length) return;
+  const u = queue.shift();
+  document.getElementById('unlockOverlay').classList.remove('hidden');
+  const m = document.getElementById('unlockModal');
+  m.classList.remove('hidden');
+  m.innerHTML = `<div class="unlock-tag">▸ NEW ${u.type} UNLOCKED</div>
+    <div class="unlock-emoji">${u.emoji}</div>
+    <div class="unlock-name">${u.name}</div>
+    <div class="unlock-desc">${u.desc}</div>
+    <button class="puzzle-btn" style="margin-top:14px" onclick="dismissUnlock(); ${queue.length ? `setTimeout(()=>showUnlockChain(${JSON.stringify(queue).replace(/"/g,'&quot;')}), 200)` : ''}">CONTINUE</button>`;
+}
+
+function dismissUnlock() {
+  document.getElementById('unlockOverlay').classList.add('hidden');
+  document.getElementById('unlockModal').classList.add('hidden');
+}
+
+// Resize
+window.addEventListener('resize', () => { if (M && canvas) initCanvas(); });
+
+// ========== INIT ==========
+(async function init() {
+  await loadProgress();
+  showScreen('introScreen');
+  playIntro();
+})();
+</script>
+</body>
+</html>
